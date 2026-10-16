@@ -1,0 +1,8 @@
+node_modules/
+.expo/
+dist/
+coverage/
+assets/
+package-lock.json
+# Documento fuente del producto: se conserva tal cual lo escribió el equipo.
+docs/PROMPT_MAESTRO.md
