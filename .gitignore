@@ -1,1 +1,56 @@
+# Dependencias
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Builds y carpetas nativas generadas (Continuous Native Generation)
+/ios
+/android
+builds/
+*.apk
+*.aab
+*.ipa
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Metro
+.metro-health-check*
+
+# Variables de entorno: nunca se versionan, salvo la plantilla
+.env
+.env.*
+!.env.example
+
+# Supabase (archivos locales del CLI)
+supabase/.temp/
+supabase/.branches/
+
+# Pruebas
+coverage/
+
+# Logs de depuración
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# TypeScript
+*.tsbuildinfo
+
+# Configuración local de Claude Code (la compartida sí se versiona)
+.claude/settings.local.json
+
+# Sistema operativo y editores
 .DS_Store
+Thumbs.db
+*.swp
+.idea/
