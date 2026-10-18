@@ -385,6 +385,14 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Prioriza un cupo liberado (regla determinista; IA en la Fase 5).
+# Exige un JWT válido: la función comprueba además que quien llama ve el cupo (RLS).
+[functions.priorizar-cupo]
+enabled = true
+verify_jwt = true
+import_map = "./functions/priorizar-cupo/deno.json"
+entrypoint = "./functions/priorizar-cupo/index.ts"
+
 [analytics]
 # Sin Logflare en local: arranque más rápido.
 enabled = false
