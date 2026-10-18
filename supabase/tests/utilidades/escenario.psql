@@ -1,0 +1,198 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- Escenario de prueba compartido (⚠️ datos ficticios). Se incluye con
+--   \ir ../utilidades/escenario.psql
+-- dentro de la transacción de cada prueba, que termina en ROLLBACK: nada persiste.
+-- No depende de seed.sql. Extensión .psql para que `supabase test db` no lo
+-- ejecute como prueba.
+--
+-- Cupo objetivo: cita 'cita_objetivo' de 'origen' (Prueba general, Sede Prueba Uno,
+-- próximo lunes 09:00 hora de Bogotá, 20 min). Al cancelarla, los candidatos son:
+--   ana    en lista hace 28 días · franja lunes 08–12 · 0 km   · 1 de 2 aceptadas → 0,923
+--   clara  en lista hace 45 días · sin franjas      · ~10 km · 0 de 2 aceptadas → 0,650
+--   diego  en lista hace 1 día   · sin franjas      · 0 km   · sin historial    → 0,413
+--   bruno  solo interés          · sin franjas      · sin zona · sin historial  → 0,300
+-- Y quedan FUERA por los filtros:
+--   origen (canceló la cita) · eva (otra cita a la misma hora) · hugo (10 km, máx. 5)
+--   ivan (solo tiene franja los martes) · staff1/staff2 (no son pacientes).
+-- Mismos casos que supabase/functions/_shared/priorizacion.test.ts.
+-- ════════════════════════════════════════════════════════════════════════════
+
+set local client_min_messages to warning;
+create extension if not exists pgtap with schema extensions;
+
+-- ───────────── Utilidades ─────────────
+
+-- Id estable y legible: pg_temp.id('ana').
+create function pg_temp.id(p_nombre text) returns uuid language sql immutable as $$
+  select md5('prueba:' || p_nombre)::uuid
+$$;
+
+-- Actuar como un usuario autenticado (igual que PostgREST con su JWT).
+create function pg_temp.como(p_nombre text) returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', pg_temp.id(p_nombre), 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+end;
+$$;
+
+create function pg_temp.como_anonimo() returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', '{"role": "anon"}', true);
+  perform set_config('role', 'anon', true);
+end;
+$$;
+
+create function pg_temp.como_servidor() returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', '{"role": "service_role"}', true);
+  perform set_config('role', 'service_role', true);
+end;
+$$;
+
+-- Volver al rol de las migraciones (postgres).
+create function pg_temp.como_admin() returns void language plpgsql as $$
+begin
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', '', true);
+end;
+$$;
+
+-- Próximo lunes a la hora local indicada (siempre en el futuro, a más de 24 h).
+create function pg_temp.lunes(p_hora text) returns timestamptz language sql stable as $$
+  select (date_trunc('week', now() at time zone 'America/Bogota') + interval '7 days' + p_hora::time)
+    at time zone 'America/Bogota'
+$$;
+
+create function pg_temp.cupo_de(p_cita text) returns uuid language sql stable as $$
+  select id from public.cupos where cita_origen_id = pg_temp.id(p_cita)
+$$;
+
+-- Captura el código de error de una sentencia (o 'ok' si no falla).
+create function pg_temp.codigo_error(p_sql text) returns text language plpgsql as $$
+begin
+  execute p_sql;
+  return 'ok';
+exception when others then
+  return sqlerrm;
+end;
+$$;
+
+grant execute on all functions in schema pg_temp to anon, authenticated, service_role;
+
+-- ───────────── Catálogo ─────────────
+
+insert into public.consultorios (id, nombre, direccion, lat, lng) values
+  (pg_temp.id('sede_uno'), 'Sede Prueba Uno', 'Calle de prueba 1', 4.602, -74.07),
+  (pg_temp.id('sede_dos'), 'Sede Prueba Dos', 'Calle de prueba 2', 4.7, -74.045);
+
+insert into public.especialidades (id, nombre) values
+  (pg_temp.id('general'), 'Prueba general'),
+  (pg_temp.id('pediatria'), 'Prueba pediatría');
+
+insert into public.profesionales (id, nombre, especialidad_id, consultorio_id) values
+  (pg_temp.id('prof_uno'), 'Dra. Prueba Uno', pg_temp.id('general'), pg_temp.id('sede_uno')),
+  (pg_temp.id('prof_dos'), 'Dr. Prueba Dos', pg_temp.id('general'), pg_temp.id('sede_dos'));
+
+-- ───────────── Personas (el trigger crea perfil y preferencias) ─────────────
+
+insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
+select pg_temp.id(u.nombre), u.nombre || '@prueba.turnosmart.test', jsonb_build_object('nombre', u.completo), u.app
+from (values
+  ('ana', 'Ana Prueba Uno', '{}'::jsonb),
+  ('bruno', 'Bruno Prueba', '{}'),
+  ('clara', 'Clara Prueba', '{}'),
+  ('diego', 'Diego Prueba', '{}'),
+  ('origen', 'Olga Origen', '{}'),
+  ('eva', 'Eva Prueba', '{}'),
+  ('hugo', 'Hugo Prueba', '{}'),
+  ('ivan', 'Iván Prueba', '{}'),
+  ('staff1', 'Recepción Uno', jsonb_build_object('rol', 'staff', 'consultorio_id', pg_temp.id('sede_uno'))),
+  ('staff2', 'Recepción Dos', jsonb_build_object('rol', 'staff', 'consultorio_id', pg_temp.id('sede_dos')))
+) as u (nombre, completo, app);
+
+update public.perfiles p set ubicacion_lat = v.lat, ubicacion_lng = v.lng
+from (values
+  ('ana', 4.602, -74.07),
+  ('clara', 4.692, -74.07),
+  ('diego', 4.602, -74.07),
+  ('eva', 4.602, -74.07),
+  ('hugo', 4.692, -74.07),
+  ('ivan', 4.602, -74.07),
+  ('origen', 4.602, -74.07)
+) as v (nombre, lat, lng)
+where p.id = pg_temp.id(v.nombre);
+
+update public.preferencias_paciente set distancia_max_km = 10 where paciente_id = pg_temp.id('ana');
+update public.preferencias_paciente set distancia_max_km = 5 where paciente_id = pg_temp.id('hugo');
+
+insert into public.preferencias_especialidades (paciente_id, especialidad_id) values
+  (pg_temp.id('bruno'), pg_temp.id('general'));
+
+insert into public.franjas_horarias (paciente_id, dia_semana, hora_inicio, hora_fin) values
+  (pg_temp.id('ana'), 1, '08:00', '12:00'),
+  (pg_temp.id('ivan'), 2, '08:00', '12:00');
+
+insert into public.solicitudes_espera (id, paciente_id, especialidad_id, creada_en)
+select pg_temp.id('sol_' || v.nombre), pg_temp.id(v.nombre), pg_temp.id('general'), now() - v.antiguedad
+from (values
+  ('ana', interval '28 days'),
+  ('clara', interval '45 days'),
+  ('diego', interval '1 day'),
+  ('origen', interval '3 days'),
+  ('eva', interval '20 days'),
+  ('hugo', interval '20 days'),
+  ('ivan', interval '20 days')
+) as v (nombre, antiguedad);
+
+-- ───────────── Citas ─────────────
+
+set constraints all deferred;
+
+insert into public.citas (id, paciente_id, profesional_id, especialidad_id, consultorio_id, fecha_hora, duracion_min, estado, origen, cupo_origen_id, cancelada_en)
+select pg_temp.id(v.cita), pg_temp.id(v.paciente), pg_temp.id(v.prof), pg_temp.id('general'),
+       case v.prof when 'prof_uno' then pg_temp.id('sede_uno') else pg_temp.id('sede_dos') end,
+       v.fecha, 20, v.estado, v.origen, case when v.cupo is null then null else pg_temp.id(v.cupo) end,
+       case when v.estado = 'cancelada' then v.fecha - interval '1 day' end
+from (values
+  -- La que se cancela en las pruebas (libera el cupo objetivo).
+  ('cita_objetivo', 'origen', 'prof_uno', pg_temp.lunes('09:00'), 'programada', 'agenda', null::text),
+  -- Eva ya tiene una cita a esa misma hora en la otra sede (cruce).
+  ('cita_eva', 'eva', 'prof_dos', pg_temp.lunes('09:10'), 'programada', 'agenda', null),
+  -- Una que ya comenzó (inasistencia) y una de dentro de 20 minutos (sin margen).
+  ('cita_comenzada', 'diego', 'prof_uno', now() - interval '10 minutes', 'programada', 'agenda', null),
+  ('cita_inminente', 'bruno', 'prof_uno', now() + interval '20 minutes', 'programada', 'agenda', null),
+  -- De la Sede Dos (para el aislamiento del staff).
+  ('cita_sede_dos', 'clara', 'prof_dos', pg_temp.lunes('15:00'), 'programada', 'agenda', null),
+  -- Historial de ofertas: dos cupos pasados.
+  ('cita_h1', 'origen', 'prof_dos', now() - interval '10 days', 'cancelada', 'agenda', null),
+  ('cita_h2', 'origen', 'prof_dos', now() - interval '9 days', 'cancelada', 'agenda', null),
+  ('cita_h2_asignada', 'ana', 'prof_dos', now() - interval '9 days', 'asistida', 'cupo_recuperado', 'cupo_h2')
+) as v (cita, paciente, prof, fecha, estado, origen, cupo);
+
+insert into public.cupos (id, cita_origen_id, consultorio_id, profesional_id, especialidad_id, fecha_hora, duracion_min, estado, cancelada_por, ronda_actual, cita_asignada_id)
+select pg_temp.id(v.cupo), c.id, c.consultorio_id, c.profesional_id, c.especialidad_id, c.fecha_hora, 20,
+       v.estado, 'paciente', 2, case when v.asignada is null then null else pg_temp.id(v.asignada) end
+from (values
+  ('cupo_h1', 'cita_h1', 'expirado', null::text),
+  ('cupo_h2', 'cita_h2', 'asignado', 'cita_h2_asignada')
+) as v (cupo, cita, estado, asignada)
+join public.citas c on c.id = pg_temp.id(v.cita);
+
+-- Ana: 1 aceptada de 2 respondidas. Clara: 0 de 2.
+insert into public.ofertas (cupo_id, consultorio_id, paciente_id, ronda, estado, creada_en, expira_en, respondida_en, explicacion)
+select pg_temp.id(v.cupo), pg_temp.id('sede_dos'), pg_temp.id(v.paciente), v.ronda, v.estado,
+       now() - interval '11 days', now() - interval '11 days' + interval '15 minutes',
+       case when v.estado in ('aceptada', 'rechazada') then now() - interval '11 days' + interval '5 minutes' end,
+       '{"puntaje": 0.5, "fuente": "regla_backend", "factores": {
+          "tiempoEspera": {"valor": 0.5, "peso": 0.4, "detalle": "x"},
+          "compatibilidadHoraria": {"valor": 0.5, "peso": 0.3, "detalle": "x"},
+          "distancia": {"valor": 0.5, "peso": 0.2, "detalle": "x"},
+          "historialRespuesta": {"valor": 0.5, "peso": 0.1, "detalle": "x"}}}'::jsonb
+from (values
+  ('cupo_h1', 'clara', 1, 'rechazada'),
+  ('cupo_h1', 'ana', 2, 'rechazada'),
+  ('cupo_h2', 'clara', 1, 'expirada'),
+  ('cupo_h2', 'ana', 2, 'aceptada')
+) as v (cupo, paciente, ronda, estado);
+
+set constraints all immediate;
