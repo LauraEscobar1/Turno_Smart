@@ -10,7 +10,7 @@ conectan las piezas y qué decide cada una.
 ┌──────────────────────────────────────────────┐
 │ App Expo (una sola app, dos roles)           │
 │  · Paciente: ofertas, citas, avisos, perfil  │
-│  · Staff: panel, cupos, ofertas, perfil      │
+│  · Staff: panel, agenda, cupos, ofertas      │
 │  Solo conoce EXPO_PUBLIC_SUPABASE_URL y la   │
 │  anon key (públicas).                        │
 └──────────────┬───────────────────────────────┘
@@ -73,29 +73,59 @@ La separación se aplica en dos capas:
   franja, historial de asistencia agregado, anticipación). Nunca diagnósticos,
   documentos de identidad ni datos de contacto.
 - **Contratos antes que implementaciones.** Las pantallas dependen de hooks y
-  contextos (`useAuth()`), y estos de las interfaces de `src/services/`. Cambiar la
-  sesión demo por Supabase Auth (Fase 4) solo toca `src/context/AuthContext.tsx`.
+  contextos (`useAuth()`), y estos de las interfaces de `src/services/`. Pasar del
+  servidor simulado a Supabase (Fase 4) solo cambia `src/services/index.ts`.
 - **Compatible con Expo Go.** Nada de dependencias nativas fuera del SDK. Las
   notificaciones son en la app (Realtime) y locales; las push remotas requieren un
   development build y son opcionales.
+
+## Capa de datos (desde la Fase 2)
+
+```text
+Pantalla (app/)            solo compone: hooks + componentes + estados de la consulta
+  └─ hook (features/*/hooks)    useQuery / useMutation, claves e invalidación de caché
+       └─ useServicios()        contexto con la implementación elegida
+            └─ contrato (src/services/*.ts)     interfaz tipada + ServiceError
+                 ├─ Fase 2: src/services/mock   servidor simulado en memoria
+                 └─ Fase 4: Supabase            supabase-js + Edge Functions
+```
+
+- **Punto único de selección:** `src/services/index.ts` crea el conjunto de
+  servicios. Las pruebas inyectan uno propio con `ServiciosProvider`.
+- **Servidor simulado:** imita el backend: cada operación recibe a quien la ejecuta
+  (como el JWT) y devuelve solo lo que le corresponde (como RLS); aplica las máquinas
+  de estado de `src/constants/estados.ts`; vence las ofertas antes de cada petición
+  (como un cron); simula latencia y fallos de red, y devuelve copias de los datos.
+- **react-query:** la caché se limpia al cerrar sesión; tras cada mutación se
+  invalidan las consultas afectadas; solo los errores de red se reintentan; las
+  consultas se refrescan al volver la app a primer plano.
+- **Validación compartida:** los esquemas zod de `src/validacion/` validan los
+  formularios y, de nuevo, el servidor. El backend nunca confía en el cliente.
+- **Errores tipados:** cada implementación traduce sus errores a `ServiceError` con
+  un código; la interfaz muestra `mensajeDeError()` en español. Ver
+  [flujos.md](flujos.md#errores-tipados).
 
 ## Estructura del código
 
 ```text
 app/                     Rutas (Expo Router). Solo componen pantallas.
-  _layout.tsx            Providers + Stack.Protected por rol
+  _layout.tsx            Proveedores + Stack.Protected por rol
   index.tsx              Redirección inicial según la sesión
   (auth)/                login, registro
   (paciente)/            Tabs: ofertas, citas, notificaciones, perfil
-  (staff)/               Tabs: panel, cupos, ofertas, perfil
+  (staff)/               Tabs: panel, agenda, cupos, ofertas, perfil
 src/
-  components/ui/         Componentes base accesibles (Button, TextField, Card…)
+  components/ui/         Componentes base accesibles
   components/layout/     Screen, Header
-  context/               AuthContext (sesión demo en Fase 1)
-  features/<dominio>/    Componentes, mocks y lógica de cada dominio
-  services/              Contratos (interfaces) de acceso a datos
+  components/form/       Campos conectados a react-hook-form
+  context/               Servicios, consultas, sesión, toasts
+  features/<dominio>/    hooks/ (datos) y components/ de cada dominio
+  services/              Contratos, errores, claves de caché, selección de implementación
+  services/mock/         Servidor simulado y datos ficticios (solo modo demo)
+  validacion/            Esquemas zod compartidos
   theme/                 Tokens: colors, spacing, radius, typography, shadows
-  constants/ types/ utils/ hooks/
+  constants/             Máquinas de estado, reglas de negocio, entorno
+  types/ utils/ hooks/ test-utils/
 backend/                 Dominio compartido y pruebas (sin servidor Node)
 supabase/                migrations/, functions/, tests/ (desde la Fase 3)
 ```
