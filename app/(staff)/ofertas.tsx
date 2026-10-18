@@ -1,18 +1,19 @@
 import { Header, Screen } from '@/components/layout';
-import { EmptyState } from '@/components/ui';
+import { ContenidoConsulta } from '@/components/ui';
+import { ListaOfertasEnCurso } from '@/features/panel/components/ListaOfertasEnCurso';
+import { useOfertasEnCurso } from '@/features/panel/hooks/usePanel';
+import { useRefrescoManual } from '@/hooks/useRefrescoManual';
 
 export default function OfertasEnCurso() {
+  const ofertas = useOfertasEnCurso();
+  const refresco = useRefrescoManual(ofertas.refetch);
+
   return (
-    <Screen scroll>
-      <Header
-        title="Ofertas en curso"
-        subtitle="Pacientes a quienes se ofreció un cupo y su respuesta."
-      />
-      <EmptyState
-        icon="paper-plane-outline"
-        title="No hay ofertas en curso"
-        description="Cuando un cupo liberado se ofrezca a la lista de espera, verás aquí el estado de cada oferta."
-      />
+    <Screen scroll refreshControl={refresco}>
+      <Header title="Ofertas en curso" subtitle="Pacientes que tienen un cupo por responder." />
+      <ContenidoConsulta consulta={ofertas} mensajeCarga="Cargando ofertas…">
+        {(datos) => <ListaOfertasEnCurso ofertas={datos} />}
+      </ContenidoConsulta>
     </Screen>
   );
 }

@@ -24,6 +24,13 @@ export default function StaffLayout() {
         }}
       />
       <Tabs.Screen
+        name="agenda"
+        options={{
+          title: 'Agenda',
+          tabBarIcon: ({ color, size }) => <Icon name="today-outline" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="cupos"
         options={{
           title: 'Cupos',
