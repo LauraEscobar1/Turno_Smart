@@ -1,83 +1,18 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 
 import { Screen } from '@/components/layout';
-import { AppText, Badge, Button, Card, Divider, EmptyState, Notice } from '@/components/ui';
-import { ESTADOS_OFERTA } from '@/constants/estados';
-import { OFERTAS_FICTICIAS } from '@/features/ofertas/mocks/ofertas.ficticias';
-import { spacing } from '@/theme';
-import { formatearFechaHora } from '@/utils/fechas';
+import { DetalleOferta } from '@/features/ofertas/components/DetalleOferta';
+import { useOferta } from '@/features/ofertas/hooks/useOfertas';
+import { useRefrescoManual } from '@/hooks/useRefrescoManual';
 
-export default function DetalleOferta() {
+export default function PantallaDetalleOferta() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const oferta = OFERTAS_FICTICIAS.find((o) => o.id === id);
-
-  if (!oferta) {
-    return (
-      <Screen edges={['bottom', 'left', 'right']}>
-        <EmptyState
-          icon="search-outline"
-          title="No encontramos esta oferta"
-          description="Es posible que haya expirado o que otro paciente ya haya tomado el cupo."
-          actionLabel="Volver a ofertas"
-          onAction={() => router.back()}
-        />
-      </Screen>
-    );
-  }
+  const { refetch } = useOferta(id);
+  const refresco = useRefrescoManual(refetch);
 
   return (
-    <Screen scroll edges={['bottom', 'left', 'right']}>
-      <Card>
-        <View style={styles.cabecera}>
-          <AppText variant="title" style={styles.titulo}>
-            {oferta.especialidad}
-          </AppText>
-          <Badge {...ESTADOS_OFERTA[oferta.estado]} />
-        </View>
-        <Divider spacingY="xs" />
-        <Dato etiqueta="Profesional" valor={oferta.profesional} />
-        <Dato etiqueta="Fecha y hora" valor={formatearFechaHora(oferta.fechaHora)} />
-        <Dato etiqueta="Duración" valor={`${oferta.duracionMin} minutos`} />
-        <Dato etiqueta="Sede" valor={oferta.sede} />
-        <Dato etiqueta="Responder antes de" valor={formatearFechaHora(oferta.expiraEn)} />
-      </Card>
-
-      <Notice
-        tone="info"
-        title="Datos ficticios"
-        message="Aceptar o rechazar ofertas se habilitará en la Fase 2 con datos simulados."
-      />
-
-      <View style={styles.acciones}>
-        <Button title="Aceptar cupo" disabled />
-        <Button title="Rechazar" variant="ghost" disabled />
-      </View>
+    <Screen scroll edges={['bottom', 'left', 'right']} refreshControl={refresco}>
+      <DetalleOferta id={id} />
     </Screen>
   );
 }
-
-function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
-  return (
-    <View accessible accessibilityLabel={`${etiqueta}: ${valor}`}>
-      <AppText variant="caption" color="textSecondary">
-        {etiqueta}
-      </AppText>
-      <AppText variant="bodyStrong">{valor}</AppText>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  cabecera: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  titulo: {
-    flex: 1,
-  },
-  acciones: {
-    gap: spacing.sm,
-  },
-});
