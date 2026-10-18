@@ -32,7 +32,10 @@ export function crearServiciosMock(opciones: OpcionesServiciosMock = {}): Servic
   const auth: AuthService = {
     async obtenerSesion() {
       const guardado = await almacenamiento.leer();
-      if (!guardado) return null;
+      if (!guardado) {
+        actorId = null;
+        return null;
+      }
       const perfil = await servidor.obtenerPerfilPorId(guardado);
       // Las cuentas registradas viven en memoria: tras reiniciar la app ya no existen.
       if (!perfil) await almacenamiento.borrar();
@@ -105,6 +108,7 @@ export function crearServiciosMock(opciones: OpcionesServiciosMock = {}): Servic
       cuentas: { paciente: CUENTAS_DEMO.paciente, staff: CUENTAS_DEMO.staff },
       obtenerModoFallos: () => servidor.obtenerConfig().fallos,
       configurarFallos: (modo) => servidor.configurar({ fallos: modo }),
+      configurarLatencia: (latenciaMs) => servidor.configurar({ latenciaMs }),
       restablecerDatos: async () => {
         servidor.restablecer();
       },

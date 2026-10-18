@@ -19,6 +19,8 @@ export interface HerramientasDemo {
   obtenerModoFallos(): ModoFallos;
   /** `intermitente` falla ~30 % de las peticiones; `siempre`, todas. */
   configurarFallos(modo: ModoFallos): void;
+  /** Latencia artificial de cada petición (300–800 ms por defecto; 0 en pruebas). */
+  configurarLatencia(latenciaMs: { min: number; max: number }): void;
   /** Vuelve a generar los datos ficticios (fechas relativas a ahora). */
   restablecerDatos(): Promise<void>;
 }

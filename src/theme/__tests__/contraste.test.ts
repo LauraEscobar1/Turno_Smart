@@ -6,6 +6,9 @@ const fondosDeTexto = {
   background: colors.background,
   surface: colors.surface,
   surfaceMuted: colors.surfaceMuted,
+  surfacePressed: colors.surfacePressed,
+  // Fondo de las notificaciones no leídas.
+  primarySoft: colors.tones.primary.soft,
 };
 
 const textos = {

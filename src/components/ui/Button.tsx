@@ -95,7 +95,7 @@ export function Button({
           testID="button-spinner"
         />
       ) : null}
-      <AppText variant="bodyStrong" style={{ color: colorTexto }} numberOfLines={1}>
+      <AppText variant="bodyStrong" align="center" style={[styles.texto, { color: colorTexto }]}>
         {title}
       </AppText>
     </Pressable>
@@ -117,5 +117,9 @@ const styles = StyleSheet.create({
   },
   fullWidth: {
     alignSelf: 'stretch',
+  },
+  // Sin límite de líneas: con fuentes grandes o pantallas estrechas el texto baja de línea.
+  texto: {
+    flexShrink: 1,
   },
 });

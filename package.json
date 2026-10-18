@@ -18,6 +18,9 @@
     "preset": "jest-expo",
     "setupFiles": [
       "<rootDir>/jest.setup.ts"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.after.ts"
     ]
   },
   "dependencies": {

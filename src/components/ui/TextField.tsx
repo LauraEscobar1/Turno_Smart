@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type Ref } from 'react';
 import {
   StyleSheet,
   TextInput,
@@ -13,6 +13,7 @@ import { colors, layout, radius, spacing, typography } from '@/theme';
 import { AppText } from './AppText';
 
 export interface TextFieldProps extends TextInputProps {
+  ref?: Ref<TextInput>;
   label: string;
   error?: string;
   helper?: string;
