@@ -52,3 +52,11 @@ Docs: https://docs.expo.dev/eas/index.md
 - Data flow: screen → hook in `src/features/*/hooks` (react-query) → `useServicios()` → contract in `src/services/`. The implementation is chosen only in `src/services/index.ts`.
 - State changes must follow `src/constants/estados.ts` (`puedeTransicionar()`); validation schemas live in `src/validacion/` and are shared by forms and the server.
 - In tests, create isolated services with `crearEntornoPrueba()` and render with `renderConProveedores()` (`src/test-utils/`).
+
+## Reglas Git
+
+- Identidad obligatoria en cada commit: `LauraEscobar1 <laura.escobarca@campusucc.edu.co>`. Antes de commitear, comprobar `git config user.name` y `git config user.email`; si no coinciden, detenerse y avisar (no tocar la configuración global).
+- Mensajes en [Conventional Commits](https://www.conventionalcommits.org/es/) y en español: `feat(fase-3): ...`, `test(fase-3): ...`, `docs: ...`, `chore: ...`. Commits pequeños y lógicos.
+- Sin atribución a IA: nada de `Co-Authored-By`, "Generated with…" ni menciones a asistentes como autores. Tras cada commit, `git log -1 --format=full` debe mostrar a LauraEscobar1 como autor y committer.
+- Push solo de la rama de la fase actual (`git push -u origin feature/fase-N-nombre`).
+- Prohibido: `merge`, `rebase`, `push --force`, borrar ramas y abrir o fusionar Pull Requests. Los PR los abre y fusiona la responsable del repositorio.
