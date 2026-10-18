@@ -3,8 +3,8 @@
 Cómo funciona TurnoSmart de punta a punta en la Fase 2 (modo demo, servidor
 simulado). Las reglas de este documento están implementadas en
 `src/constants/estados.ts`, `src/constants/reglas.ts` y `src/services/mock/`, y
-cubiertas por pruebas. En la Fase 3 el backend de Supabase aplicará las mismas
-reglas.
+cubiertas por pruebas. Desde la Fase 3 el backend de Supabase aplica las mismas
+reglas: [base-de-datos.md](base-de-datos.md) y [api.md](api.md).
 
 ## Ciclo de vida de un cupo
 

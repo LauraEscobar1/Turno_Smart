@@ -59,6 +59,7 @@ La separación se aplica en dos capas:
    con las rutas reales.
 2. **Supabase (seguridad real, Fase 3):** políticas RLS por rol. La protección en
    la app no sustituye a RLS; solo evita mostrar pantallas que no corresponden.
+   Detalle en [base-de-datos.md](base-de-datos.md#seguridad-rls-y-privilegios).
 
 ## Principios
 
@@ -127,7 +128,7 @@ src/
   constants/             Máquinas de estado, reglas de negocio, entorno
   types/ utils/ hooks/ test-utils/
 backend/                 Dominio compartido y pruebas (sin servidor Node)
-supabase/                migrations/, functions/, tests/ (desde la Fase 3)
+supabase/                migrations/, seed.sql, functions/, tests/ (Fase 3)
 ```
 
 ### Rutas con el mismo nombre en ambos roles

@@ -92,6 +92,10 @@ usa `npx expo start --tunnel`.
 | `npm run format:check` | Comprueba el formato sin modificar archivos           |
 | `npm test`             | Pruebas con Jest                                      |
 | `npm run test:watch`   | Pruebas en modo observación                           |
+| `npm run db:start`     | Levanta Supabase local (Docker)                       |
+| `npm run db:reset`     | Aplica migraciones y datos ficticios (`seed.sql`)     |
+| `npm run test:db`      | Pruebas pgTAP de la base de datos                     |
+| `npm run test:deno`    | Pruebas de las Edge Functions (requiere Deno 2)       |
 
 Diagnóstico del proyecto: `npx expo-doctor`.
 
@@ -122,8 +126,10 @@ src/
   constants/            Máquinas de estado, reglas de negocio, entorno
   types/ utils/ hooks/ test-utils/
 backend/                Dominio compartido y pruebas (sin servidor Node)
-supabase/               functions/_shared, migrations, tests (desde la Fase 3)
-docs/                   PROMPT_MAESTRO.md, arquitectura.md, flujos.md, ramas.md
+supabase/               migrations/ (esquema, RLS, RPC, cron), seed.sql (ficticio),
+                        functions/ (priorizar-cupo y _shared/), tests/ (pgTAP)
+docs/                   PROMPT_MAESTRO.md, arquitectura.md, flujos.md, ramas.md,
+                        base-de-datos.md, api.md
 ```
 
 ## Flujo de ramas
@@ -137,7 +143,7 @@ docs/                   PROMPT_MAESTRO.md, arquitectura.md, flujos.md, ramas.md
 | ---- | --------------------------------- | ---------------------------------------------------- | ------------- |
 | 1    | `feature/fase-1-fundacion`        | Proyecto, estructura, tema, componentes, sesión demo | ✅ Completada |
 | 2    | `feature/fase-2-app-mobile`       | App completa con datos ficticios                     | ✅ Completada |
-| 3    | `feature/fase-3-supabase-backend` | Supabase: esquema, RLS, Edge Functions               | ⏳ Pendiente  |
+| 3    | `feature/fase-3-supabase-backend` | Supabase: esquema, RLS, Edge Functions               | ✅ Completada |
 | 4    | `feature/fase-4-integracion`      | Integración sin IA + notificaciones                  | ⏳ Pendiente  |
 | 5    | `feature/fase-5-ia-deepseek`      | Priorización y riesgo de inasistencia con DeepSeek   | ⏳ Pendiente  |
 | 6    | `release/v1.0.0` → `main`         | QA y entrega                                         | ⏳ Pendiente  |
@@ -162,6 +168,24 @@ servicios tipados a través de hooks; en la Fase 4 se cambia la implementación 
 
 Detalle de los flujos, las máquinas de estado y las reglas: [docs/flujos.md](docs/flujos.md).
 
+### Fase 3: backend en Supabase (local)
+
+El backend replica las reglas del servidor simulado en Postgres: tablas con
+restricciones y máquinas de estado validadas por triggers, RLS en todas las tablas,
+RPC transaccionales (cancelar, responder, expirar, ofrecer), priorización
+determinista auditada (SQL + Edge Function `priorizar-cupo`) y pg_cron cada minuto.
+La app todavía usa el servidor simulado; se conecta en la Fase 4.
+
+```bash
+npm run db:start    # requiere Docker y la CLI de Supabase
+npm run db:reset    # migraciones + datos ficticios con las mismas cuentas demo
+npm run test:db     # pgTAP: esquema, RLS, RPC, priorización y concurrencia
+```
+
+Todo es local: no se enlaza un proyecto remoto ni se usan secretos. Modelo y seguridad
+en [docs/base-de-datos.md](docs/base-de-datos.md); RPC y Edge Functions en
+[docs/api.md](docs/api.md).
+
 ### Cuentas demo
 
 Todas usan la contraseña `demo1234`. Las personas y sedes son ficticias.
@@ -174,7 +198,8 @@ Todas usan la contraseña `demo1234`. Las personas y sedes son ficticias.
 | `staff.norte@demo.turnosmart.co` | Staff, Sede Norte        | Comprobar que el staff solo ve su consultorio.                                   |
 
 También puedes **crear una cuenta de paciente** desde el login: empieza sin datos
-(útil para ver los estados vacíos).
+(útil para ver los estados vacíos). Las mismas cuentas existen en el Supabase local
+(`supabase/seed.sql`), con la misma contraseña.
 
 ### Cómo probar los flujos en Expo Go
 
@@ -220,3 +245,6 @@ También puedes **crear una cuenta de paciente** desde el login: empieza sin dat
 - En `.env` solo van variables `EXPO_PUBLIC_*`, que son públicas.
 - `DEEPSEEK_API_KEY` y la service role de Supabase **nunca** van en la app ni en el
   repositorio: son secretos de las Edge Functions.
+- La seguridad real la da el backend: RLS en todas las tablas, el cliente solo lee, y
+  todo cambio de estado pasa por RPC que validan quién llama. Ningún cliente crea
+  ofertas ni elige a quién se ofrece un cupo.
