@@ -1,9 +1,11 @@
 import type { Notificacion } from '@/types';
 
-/** Notificaciones dentro de la app (Supabase Realtime en la Fase 4). */
+/** Notificaciones dentro de la app (en la Fase 4 llegan por Supabase Realtime). */
 export interface NotificacionesService {
+  /** De la más reciente a la más antigua. */
   listar(): Promise<Notificacion[]>;
-  marcarLeida(id: string): Promise<void>;
-  /** Suscribe a notificaciones nuevas; devuelve la función para cancelar. */
-  suscribirse(oyente: (notificacion: Notificacion) => void): () => void;
+  contarNoLeidas(): Promise<number>;
+  marcarLeida(id: string): Promise<Notificacion>;
+  /** Devuelve cuántas se marcaron. */
+  marcarTodasLeidas(): Promise<number>;
 }
