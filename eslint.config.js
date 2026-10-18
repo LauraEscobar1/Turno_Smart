@@ -7,7 +7,8 @@ module.exports = defineConfig([
   expoConfig,
   eslintPluginPrettierRecommended,
   {
-    ignores: ['dist/*', '.expo/*', 'coverage/*', 'node_modules/*'],
+    // supabase/functions es código Deno: lo revisan `deno lint` y `deno check`.
+    ignores: ['dist/*', '.expo/*', 'coverage/*', 'node_modules/*', 'supabase/functions/**'],
   },
   {
     files: ['app/**/*.tsx'],

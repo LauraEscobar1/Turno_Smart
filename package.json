@@ -12,7 +12,11 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "db:start": "supabase start",
+    "db:reset": "supabase db reset",
+    "test:db": "supabase test db",
+    "test:deno": "deno test supabase/functions"
   },
   "jest": {
     "preset": "jest-expo",
@@ -21,6 +25,10 @@
     ],
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.after.ts"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/supabase/"
     ]
   },
   "dependencies": {
