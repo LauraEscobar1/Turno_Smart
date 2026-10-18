@@ -7,6 +7,9 @@ import { Screen } from '@/components/layout';
 import { LoadingState } from '@/components/ui';
 import { avisarSiFaltaConfiguracion } from '@/constants/env';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { ConsultasProvider } from '@/context/ConsultasProvider';
+import { ServiciosProvider } from '@/context/ServiciosContext';
+import { ToastProvider } from '@/context/ToastContext';
 import { colors } from '@/theme';
 
 export default function RootLayout() {
@@ -16,10 +19,16 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <StatusBar style="dark" />
-        <NavegacionRaiz />
-      </AuthProvider>
+      <ServiciosProvider>
+        <ConsultasProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <StatusBar style="dark" />
+              <NavegacionRaiz />
+            </ToastProvider>
+          </AuthProvider>
+        </ConsultasProvider>
+      </ServiciosProvider>
     </SafeAreaProvider>
   );
 }
@@ -35,7 +44,7 @@ function NavegacionRaiz() {
   if (cargando) {
     return (
       <Screen edges={['top', 'bottom', 'left', 'right']}>
-        <LoadingState message="Preparando TurnoSmart…" />
+        <LoadingState message="Restaurando tu sesión…" />
       </Screen>
     );
   }

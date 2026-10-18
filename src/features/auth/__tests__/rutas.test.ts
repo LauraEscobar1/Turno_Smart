@@ -1,7 +1,7 @@
-import { USUARIOS_DEMO } from '@/features/auth/demoAuthService';
 import { grupoPara, puedeAcceder, rutaInicialPara, RUTAS } from '@/features/auth/rutas';
 
-const { paciente, staff } = USUARIOS_DEMO;
+const paciente = { rol: 'paciente' as const };
+const staff = { rol: 'staff' as const };
 
 describe('rutas por rol', () => {
   it('sin sesión envía al login', () => {
