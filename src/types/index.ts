@@ -1,1 +1,1 @@
-export type * from './dominio';
+export * from './dominio';

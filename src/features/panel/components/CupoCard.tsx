@@ -1,31 +1,49 @@
 import { StyleSheet, View } from 'react-native';
 
 import { AppText, Badge, Card } from '@/components/ui';
-import { ESTADOS_CUPO, MOTIVOS_LIBERACION } from '@/constants/estados';
+import { CANCELADA_POR, ESTADOS_CUPO } from '@/constants/estados';
+import { useCuentaRegresiva } from '@/features/ofertas/hooks/useCuentaRegresiva';
+import { IndicadorTiempo } from '@/features/ofertas/components/IndicadorTiempo';
 import { spacing } from '@/theme';
-import type { CupoLiberado } from '@/types';
+import type { CupoDetalle } from '@/types';
 import { formatearFechaHora } from '@/utils/fechas';
 
 export interface CupoCardProps {
-  cupo: CupoLiberado;
+  cupo: CupoDetalle;
+  onPress?: () => void;
 }
 
-export function CupoCard({ cupo }: CupoCardProps) {
+export function CupoCard({ cupo, onPress }: CupoCardProps) {
+  const estado = ESTADOS_CUPO[cupo.estado];
+  const fecha = formatearFechaHora(cupo.fechaHora);
   return (
-    <Card>
+    <Card
+      onPress={onPress}
+      accessibilityLabel={`Cupo de ${cupo.especialidad.nombre}, ${fecha}. Estado: ${estado.label}`}
+      accessibilityHint="Abre la línea de tiempo de ofertas"
+    >
       <View style={styles.cabecera}>
         <AppText variant="subtitle" style={styles.titulo}>
-          {cupo.especialidad}
+          {cupo.especialidad.nombre}
         </AppText>
-        <Badge {...ESTADOS_CUPO[cupo.estado]} />
+        <Badge {...estado} />
       </View>
-      <AppText color="textSecondary">{cupo.profesional}</AppText>
-      <AppText variant="bodyStrong">{formatearFechaHora(cupo.fechaHora)}</AppText>
+      <AppText color="textSecondary">{cupo.profesional.nombre}</AppText>
+      <AppText variant="bodyStrong">{fecha}</AppText>
       <AppText variant="caption" color="textSecondary">
-        {cupo.sede} · {cupo.duracionMin} min · Motivo: {MOTIVOS_LIBERACION[cupo.motivo]}
+        {CANCELADA_POR[cupo.canceladaPor]} ·{' '}
+        {cupo.rondaActual === 0
+          ? 'Sin ofertas aún'
+          : `${cupo.rondaActual} ${cupo.rondaActual === 1 ? 'ronda' : 'rondas'} de oferta`}
       </AppText>
+      {cupo.ofertaVigente ? <TiempoOfertaVigente expiraEn={cupo.ofertaVigente.expiraEn} /> : null}
     </Card>
   );
+}
+
+function TiempoOfertaVigente({ expiraEn }: { expiraEn: string }) {
+  const tiempo = useCuentaRegresiva(expiraEn);
+  return <IndicadorTiempo tiempo={tiempo} />;
 }
 
 const styles = StyleSheet.create({

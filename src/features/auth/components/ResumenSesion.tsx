@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { AppText, Avatar, Badge, Button, Card, Notice } from '@/components/ui';
+import { AppText, Avatar, Badge, Button, Card } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { spacing } from '@/theme';
 
@@ -9,7 +9,7 @@ const ETIQUETA_ROL = { paciente: 'Paciente', staff: 'Staff del consultorio' } as
 
 /** Tarjeta de perfil con datos de la sesión y botón de cierre; compartida por ambos roles. */
 export function ResumenSesion() {
-  const { usuario, modoDemo, cerrarSesion } = useAuth();
+  const { usuario, cerrarSesion } = useAuth();
   const [saliendo, setSaliendo] = useState(false);
 
   if (!usuario) return null;
@@ -30,17 +30,13 @@ export function ResumenSesion() {
           <Avatar nombre={usuario.nombre} size="lg" />
           <View style={styles.textos}>
             <AppText variant="subtitle">{usuario.nombre}</AppText>
+            <AppText variant="caption" color="textSecondary">
+              {usuario.email}
+            </AppText>
             <Badge label={ETIQUETA_ROL[usuario.rol]} tone="primary" />
           </View>
         </View>
       </Card>
-      {modoDemo ? (
-        <Notice
-          tone="warning"
-          title="MODO DEMO"
-          message="Sesión simulada en memoria. Al cerrar la app o la sesión, se pierde."
-        />
-      ) : null}
       <Button title="Cerrar sesión" variant="secondary" onPress={salir} loading={saliendo} />
     </View>
   );

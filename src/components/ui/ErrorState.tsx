@@ -11,6 +11,8 @@ export interface ErrorStateProps {
   message: string;
   onRetry?: () => void;
   retryLabel?: string;
+  /** Muestra el botón en carga mientras se reintenta. */
+  retrying?: boolean;
 }
 
 export function ErrorState({
@@ -18,6 +20,7 @@ export function ErrorState({
   message,
   onRetry,
   retryLabel = 'Reintentar',
+  retrying = false,
 }: ErrorStateProps) {
   return (
     <View style={styles.contenedor}>
@@ -35,7 +38,9 @@ export function ErrorState({
       >
         {message}
       </AppText>
-      {onRetry ? <Button title={retryLabel} variant="primary" onPress={onRetry} /> : null}
+      {onRetry ? (
+        <Button title={retryLabel} variant="primary" onPress={onRetry} loading={retrying} />
+      ) : null}
     </View>
   );
 }

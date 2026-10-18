@@ -5,12 +5,16 @@ import { Icon } from '@/components/ui';
 import { opcionesTabs } from '@/constants/navegacion';
 import { useAuth } from '@/context/AuthContext';
 import { puedeAcceder } from '@/features/auth/rutas';
+import { useConteoNoLeidas } from '@/features/notificaciones/hooks/useNotificaciones';
+import { colors } from '@/theme';
 
 export default function PacienteLayout() {
   const { usuario } = useAuth();
+  const permitido = puedeAcceder(usuario, '(paciente)');
+  const { data: noLeidas = 0 } = useConteoNoLeidas(permitido);
 
   // Defensa adicional al Stack.Protected del layout raíz.
-  if (!puedeAcceder(usuario, '(paciente)')) return <Redirect href="/" />;
+  if (!permitido) return <Redirect href="/" />;
 
   return (
     <Tabs screenOptions={opcionesTabs}>
@@ -34,7 +38,13 @@ export default function PacienteLayout() {
         name="notificaciones"
         options={{
           title: 'Avisos',
-          tabBarAccessibilityLabel: 'Notificaciones',
+          tabBarAccessibilityLabel:
+            noLeidas > 0 ? `Notificaciones, ${noLeidas} sin leer` : 'Notificaciones',
+          tabBarBadge: noLeidas > 0 ? noLeidas : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: colors.tones.error.solid,
+            color: colors.textInverse,
+          },
           tabBarIcon: ({ color, size }) => (
             <Icon name="notifications-outline" color={color} size={size} />
           ),

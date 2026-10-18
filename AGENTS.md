@@ -48,4 +48,7 @@ Docs: https://docs.expo.dev/eas/index.md
 - Navigate with the route group included (`/(paciente)/ofertas`, `/(staff)/ofertas`): both roles share route names.
 - Screens depend on `useAuth()` and the contracts in `src/services/`, never on a concrete implementation.
 - The AI (DeepSeek) is called only from Supabase Edge Functions. Never put `DEEPSEEK_API_KEY` or the service role key in the app or in `.env`.
-- Fake data lives in `src/features/*/mocks` and must be labeled as fake.
+- Fake data lives only in `src/services/mock/` (simulated server) and must be labeled as fake. Screens never import from `src/services/mock/`.
+- Data flow: screen → hook in `src/features/*/hooks` (react-query) → `useServicios()` → contract in `src/services/`. The implementation is chosen only in `src/services/index.ts`.
+- State changes must follow `src/constants/estados.ts` (`puedeTransicionar()`); validation schemas live in `src/validacion/` and are shared by forms and the server.
+- In tests, create isolated services with `crearEntornoPrueba()` and render with `renderConProveedores()` (`src/test-utils/`).

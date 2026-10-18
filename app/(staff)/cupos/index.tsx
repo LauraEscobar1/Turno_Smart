@@ -1,31 +1,22 @@
 import { Header, Screen } from '@/components/layout';
-import { EmptyState, Notice } from '@/components/ui';
-import { CupoCard } from '@/features/panel/components/CupoCard';
-import { CUPOS_FICTICIOS } from '@/features/panel/mocks/panel.ficticio';
+import { ContenidoConsulta } from '@/components/ui';
+import { ListaCupos } from '@/features/panel/components/ListaCupos';
+import { useCupos } from '@/features/panel/hooks/usePanel';
+import { useRefrescoManual } from '@/hooks/useRefrescoManual';
 
 export default function Cupos() {
-  const cupos = CUPOS_FICTICIOS;
+  const cupos = useCupos();
+  const refresco = useRefrescoManual(cupos.refetch);
 
   return (
-    <Screen scroll>
+    <Screen scroll refreshControl={refresco}>
       <Header
         title="Cupos liberados"
-        subtitle="Citas canceladas o con inasistencia que pueden recuperarse."
+        subtitle="Citas canceladas que se están ofreciendo a la lista de espera."
       />
-      <Notice
-        tone="info"
-        title="Datos ficticios"
-        message="El registro de cancelaciones e inasistencias se habilita en la Fase 2."
-      />
-      {cupos.length === 0 ? (
-        <EmptyState
-          icon="calendar-clear-outline"
-          title="No hay cupos liberados"
-          description="Cuando registres una cancelación o inasistencia, el cupo aparecerá aquí."
-        />
-      ) : (
-        cupos.map((cupo) => <CupoCard key={cupo.id} cupo={cupo} />)
-      )}
+      <ContenidoConsulta consulta={cupos} mensajeCarga="Cargando cupos…">
+        {(datos) => <ListaCupos cupos={datos} />}
+      </ContenidoConsulta>
     </Screen>
   );
 }

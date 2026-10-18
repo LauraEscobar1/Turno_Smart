@@ -3,34 +3,49 @@ import { StyleSheet, View } from 'react-native';
 import { AppText, Badge, Card } from '@/components/ui';
 import { ESTADOS_OFERTA } from '@/constants/estados';
 import { spacing } from '@/theme';
-import type { OfertaCupo } from '@/types';
+import type { OfertaDetalle } from '@/types';
 import { formatearFechaHora } from '@/utils/fechas';
 
+import { useOfertaEnVivo } from '../hooks/useOfertaEnVivo';
+import { IndicadorTiempo } from './IndicadorTiempo';
+
 export interface OfertaCardProps {
-  oferta: OfertaCupo;
+  oferta: OfertaDetalle;
   onPress?: () => void;
 }
 
 export function OfertaCard({ oferta, onPress }: OfertaCardProps) {
-  const estado = ESTADOS_OFERTA[oferta.estado];
+  const { tiempo, estado, puedeResponder } = useOfertaEnVivo(oferta);
+  const presentacion = ESTADOS_OFERTA[estado];
   const fecha = formatearFechaHora(oferta.fechaHora);
+  const cierre = oferta.respondidaEn
+    ? `Respondida: ${formatearFechaHora(oferta.respondidaEn)}`
+    : estado === 'expirada'
+      ? `Venció: ${formatearFechaHora(oferta.expiraEn)}`
+      : null;
+
   return (
     <Card
       onPress={onPress}
-      accessibilityLabel={`${oferta.especialidad}, ${fecha}, ${oferta.sede}. Estado: ${estado.label}`}
+      accessibilityLabel={`${oferta.especialidad.nombre}, ${fecha}, ${oferta.consultorio.nombre}. Estado: ${presentacion.label}`}
       accessibilityHint="Abre el detalle de la oferta"
     >
       <View style={styles.cabecera}>
         <AppText variant="subtitle" style={styles.titulo}>
-          {oferta.especialidad}
+          {oferta.especialidad.nombre}
         </AppText>
-        <Badge {...estado} />
+        <Badge {...presentacion} />
       </View>
-      <AppText color="textSecondary">{oferta.profesional}</AppText>
-      <AppText variant="bodyStrong">{fecha}</AppText>
-      <AppText variant="caption" color="textSecondary">
-        {oferta.sede} · {oferta.duracionMin} min
+      <AppText color="textSecondary">
+        {oferta.profesional.nombre} · {oferta.consultorio.nombre}
       </AppText>
+      <AppText variant="bodyStrong">{fecha}</AppText>
+      {puedeResponder ? <IndicadorTiempo tiempo={tiempo} /> : null}
+      {!puedeResponder && cierre ? (
+        <AppText variant="caption" color="textSecondary">
+          {cierre}
+        </AppText>
+      ) : null}
     </Card>
   );
 }

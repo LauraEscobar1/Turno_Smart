@@ -18,13 +18,16 @@ y el backend decide.** Ver [docs/arquitectura.md](docs/arquitectura.md).
 
 ## Stack
 
-| Capa       | Tecnología                                                                      |
-| ---------- | ------------------------------------------------------------------------------- |
-| App        | Expo SDK 57 · React Native 0.86 · React 19.2 · TypeScript 6 (strict)            |
-| Navegación | Expo Router 57 (rutas por archivos, `Stack.Protected` por rol, rutas tipadas)   |
-| Calidad    | ESLint (`eslint-config-expo`) + Prettier · Jest (`jest-expo`) + Testing Library |
-| Backend    | Supabase: Auth, Postgres + RLS, Realtime, Edge Functions (desde la Fase 3)      |
-| IA         | DeepSeek, invocada solo desde Edge Functions (Fase 5)                           |
+| Capa        | Tecnología                                                                      |
+| ----------- | ------------------------------------------------------------------------------- |
+| App         | Expo SDK 57 · React Native 0.86 · React 19.2 · TypeScript 6 (strict)            |
+| Navegación  | Expo Router 57 (rutas por archivos, `Stack.Protected` por rol, rutas tipadas)   |
+| Datos       | @tanstack/react-query 5 (caché, mutaciones, invalidación, refresco)             |
+| Formularios | react-hook-form 7 + zod 4 (`@hookform/resolvers`)                               |
+| Sesión      | AsyncStorage 2.2 (persistencia de la sesión demo; compatible con Expo Go)       |
+| Calidad     | ESLint (`eslint-config-expo`) + Prettier · Jest (`jest-expo`) + Testing Library |
+| Backend     | Supabase: Auth, Postgres + RLS, Realtime, Edge Functions (desde la Fase 3)      |
+| IA          | DeepSeek, invocada solo desde Edge Functions (Fase 5)                           |
 
 ### Versión de Expo SDK: 57
 
@@ -54,7 +57,7 @@ Cuando Expo Go para SDK 58 esté en las tiendas, la actualización es
 git clone https://github.com/LauraEscobar1/Turno_Smart.git
 cd Turno_Smart
 npm install
-cp .env.example .env   # opcional en la Fase 1: sin .env la app funciona en MODO DEMO
+cp .env.example .env   # opcional hasta la Fase 4: sin .env la app funciona en MODO DEMO
 ```
 
 > Para agregar dependencias usa siempre `npx expo install <paquete>`, que elige la
@@ -71,7 +74,7 @@ npm start
 2. **Android:** abre Expo Go → _Scan QR code_. **iPhone:** escanea el QR con la
    cámara y toca el aviso de Expo Go.
 3. En la pantalla de inicio elige **Entrar como paciente demo** o **Entrar como
-   staff demo**.
+   staff demo** (o inicia sesión con una de las [cuentas demo](#cuentas-demo)).
 
 Si el teléfono no conecta (redes de universidad o con aislamiento de clientes),
 usa `npx expo start --tunnel`.
@@ -96,25 +99,31 @@ Diagnóstico del proyecto: `npx expo-doctor`.
 
 ```text
 app/                    Rutas de Expo Router (solo componen pantallas)
-  _layout.tsx           Providers y protección de rutas por rol
+  _layout.tsx           Proveedores y protección de rutas por rol
   index.tsx             Redirección inicial según la sesión
   (auth)/               login, registro
-  (paciente)/           Tabs: ofertas, citas, notificaciones, perfil
-  (staff)/              Tabs: panel, cupos, ofertas, perfil
+  (paciente)/           Tabs: ofertas (+ detalle, historial, lista de espera),
+                        citas, notificaciones, perfil (+ preferencias)
+  (staff)/              Tabs: panel, agenda, cupos (+ detalle), ofertas, perfil
   +not-found.tsx
 src/
-  components/ui/        Button, TextField, Card, Badge, Avatar, Divider, Notice,
-                        ListItem, LoadingState, EmptyState, ErrorState, AppText, Icon
+  components/ui/        Componentes base accesibles (Button, TextField, ConfirmDialog,
+                        SelectorUnico/Múltiple, Stepper, ContenidoConsulta…)
   components/layout/    Screen, Header
-  context/              AuthContext (sesión simulada en la Fase 1)
-  features/             auth, ofertas, citas, pacientes, preferencias, panel,
-                        notificaciones (componentes y mocks/ ficticios)
-  services/             Contratos de servicios (interfaces)
+  components/form/      CampoTexto (TextField + react-hook-form)
+  context/              Servicios, consultas (react-query), sesión, toasts
+  features/<dominio>/   hooks/ (datos) y components/ de auth, ofertas, listaEspera,
+                        preferencias, citas, notificaciones, panel, demo
+  services/             Contratos, errores tipados, claves de caché y el punto único
+                        de selección de la implementación (index.ts)
+  services/mock/        Servidor simulado, datos ficticios y reglas de simulación
+  validacion/           Esquemas zod compartidos (formularios y servidor)
   theme/                Tokens tipados: colors, spacing, radius, typography, shadows
-  constants/ types/ utils/ hooks/
+  constants/            Máquinas de estado, reglas de negocio, entorno
+  types/ utils/ hooks/ test-utils/
 backend/                Dominio compartido y pruebas (sin servidor Node)
 supabase/               functions/_shared, migrations, tests (desde la Fase 3)
-docs/                   PROMPT_MAESTRO.md, arquitectura.md, ramas.md
+docs/                   PROMPT_MAESTRO.md, arquitectura.md, flujos.md, ramas.md
 ```
 
 ## Flujo de ramas
@@ -127,21 +136,84 @@ docs/                   PROMPT_MAESTRO.md, arquitectura.md, ramas.md
 | Fase | Rama                              | Contenido                                            | Estado        |
 | ---- | --------------------------------- | ---------------------------------------------------- | ------------- |
 | 1    | `feature/fase-1-fundacion`        | Proyecto, estructura, tema, componentes, sesión demo | ✅ Completada |
-| 2    | `feature/fase-2-app-mobile`       | App completa con datos ficticios                     | ⏳ Pendiente  |
+| 2    | `feature/fase-2-app-mobile`       | App completa con datos ficticios                     | ✅ Completada |
 | 3    | `feature/fase-3-supabase-backend` | Supabase: esquema, RLS, Edge Functions               | ⏳ Pendiente  |
 | 4    | `feature/fase-4-integracion`      | Integración sin IA + notificaciones                  | ⏳ Pendiente  |
 | 5    | `feature/fase-5-ia-deepseek`      | Priorización y riesgo de inasistencia con DeepSeek   | ⏳ Pendiente  |
 | 6    | `release/v1.0.0` → `main`         | QA y entrega                                         | ⏳ Pendiente  |
 
-### Fase 1: qué incluye
+### Fase 2: qué incluye
 
-- Sesión **simulada** (MODO DEMO) con dos accesos: paciente y staff. No hay cuentas
-  reales ni datos persistentes.
-- Cada rol solo puede abrir sus propias rutas (`Stack.Protected` y una verificación
-  en el layout de cada grupo).
-- Las pantallas muestran datos **ficticios** marcados como tales
-  (`src/features/*/mocks`).
-- Sin Supabase ni IA todavía.
+La app funciona de punta a punta con **datos ficticios** servidos por un
+**servidor simulado** en memoria (`src/services/mock/`), con latencia de 300–800 ms,
+errores simulables y las mismas reglas que tendrá el backend. Las pantallas consumen
+servicios tipados a través de hooks; en la Fase 4 se cambia la implementación en
+`src/services/index.ts` por Supabase sin tocar las pantallas.
+
+- Login y registro con validación (react-hook-form + zod); la sesión se guarda y se
+  restaura al abrir la app.
+- Paciente: ofertas con cuenta regresiva en vivo, aceptar o rechazar con
+  confirmación, "¿Por qué recibí esta oferta?", lista de espera, preferencias,
+  citas (próximas e historial) con cancelación, historial de ofertas y
+  notificaciones con contador.
+- Staff: métricas, agenda con riesgo de inasistencia (estimación ficticia), registro
+  de cancelaciones e inasistencias, cupos con línea de tiempo y ofertas en curso.
+- Cada pantalla con datos tiene estados de carga, error con reintento, vacío y éxito.
+
+Detalle de los flujos, las máquinas de estado y las reglas: [docs/flujos.md](docs/flujos.md).
+
+### Cuentas demo
+
+Todas usan la contraseña `demo1234`. Las personas y sedes son ficticias.
+
+| Cuenta                           | Rol                      | Para qué sirve                                                                   |
+| -------------------------------- | ------------------------ | -------------------------------------------------------------------------------- |
+| `paciente@demo.turnosmart.co`    | Paciente (Mariana Rojas) | Botón **Entrar como paciente demo**. Tiene una oferta pendiente al abrir la app. |
+| `carlos@demo.turnosmart.co`      | Paciente (Carlos Pérez)  | Comprobar que un paciente no ve las ofertas de otro.                             |
+| `staff@demo.turnosmart.co`       | Staff, Sede Centro       | Botón **Entrar como staff demo**.                                                |
+| `staff.norte@demo.turnosmart.co` | Staff, Sede Norte        | Comprobar que el staff solo ve su consultorio.                                   |
+
+También puedes **crear una cuenta de paciente** desde el login: empieza sin datos
+(útil para ver los estados vacíos).
+
+### Cómo probar los flujos en Expo Go
+
+**Paciente** (Entrar como paciente demo):
+
+1. **Ofertas:** la oferta de Medicina general muestra la cuenta regresiva (15 min).
+   Tócala para ver el detalle y "¿Por qué recibí esta oferta?".
+2. **Aceptar cupo** → confirma → aparece "Cita confirmada". Toca **Ver mis citas**: la
+   cita tiene la insignia "Cupo recuperado". (O **Rechazar**: el cupo pasa al
+   siguiente paciente.)
+3. **Lista de espera** (desde Ofertas): únete a Pediatría o sal de una lista.
+4. **Perfil → Preferencias:** agrega franjas. Prueba una franja con el inicio igual
+   al fin o dos franjas que se crucen el mismo día: la validación lo impide.
+5. **Citas:** cancela la cita próxima de Medicina general (con confirmación).
+6. **Avisos:** el contador de la pestaña muestra las no leídas; marca todas como leídas.
+
+**Staff** (Entrar como staff demo):
+
+1. **Panel:** métricas de la Sede Centro.
+2. **Agenda:** riesgo por cita (estimación ficticia). **Registrar cancelación** en una
+   cita futura y luego mira **Cupos**: aparece el cupo nuevo ofreciéndose. Hay una cita
+   que ya comenzó para **Registrar inasistencia**.
+3. **Cupos:** filtra por estado y abre un cupo para ver la línea de tiempo de rondas.
+4. **Ofertas:** ofertas pendientes con su tiempo restante.
+
+**Errores y datos** (Perfil → Herramientas de desarrollo, en ambos roles):
+
+- **Simular fallos de conexión:** "Siempre" hace fallar todas las peticiones (verás los
+  estados de error con **Reintentar**); "Intermitentes" falla ~30 %.
+- **Restablecer datos de demostración:** vuelve al escenario inicial.
+
+### Limitaciones del modo demo
+
+- Los datos viven en memoria: al cerrar la app se regeneran. La sesión de las cuentas
+  demo se restaura; las cuentas creadas con el registro se pierden.
+- La priorización de pacientes y el riesgo de inasistencia son **reglas de
+  simulación** documentadas, no la lógica final (Fases 3 y 5).
+- Las notificaciones son dentro de la app (se consultan cada 15 s); las notificaciones
+  locales y Realtime llegan en la Fase 4.
 
 ## Seguridad
 

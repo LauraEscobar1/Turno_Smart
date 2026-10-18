@@ -1,37 +1,19 @@
 import { Header, Screen } from '@/components/layout';
-import { AppText, EmptyState, Notice } from '@/components/ui';
-import { CitaCard } from '@/features/citas/components/CitaCard';
-import { CITAS_FICTICIAS } from '@/features/citas/mocks/citas.ficticias';
+import { ContenidoConsulta } from '@/components/ui';
+import { ListaCitas } from '@/features/citas/components/ListaCitas';
+import { useCitas } from '@/features/citas/hooks/useCitas';
+import { useRefrescoManual } from '@/hooks/useRefrescoManual';
 
 export default function Citas() {
-  const proximas = CITAS_FICTICIAS;
+  const citas = useCitas();
+  const refresco = useRefrescoManual(citas.refetch);
 
   return (
-    <Screen scroll>
+    <Screen scroll refreshControl={refresco}>
       <Header title="Mis citas" subtitle="Tus próximas citas y el historial de atenciones." />
-      <Notice tone="info" title="Datos ficticios" message="Citas de ejemplo para el modo demo." />
-
-      <AppText variant="subtitle" accessibilityRole="header">
-        Próximas
-      </AppText>
-      {proximas.length === 0 ? (
-        <EmptyState
-          icon="calendar-outline"
-          title="No tienes citas próximas"
-          description="Las citas que aceptes desde una oferta aparecerán aquí."
-        />
-      ) : (
-        proximas.map((cita) => <CitaCard key={cita.id} cita={cita} />)
-      )}
-
-      <AppText variant="subtitle" accessibilityRole="header">
-        Historial
-      </AppText>
-      <EmptyState
-        icon="time-outline"
-        title="Aún no hay historial"
-        description="Aquí verás las citas completadas, canceladas o perdidas."
-      />
+      <ContenidoConsulta consulta={citas} mensajeCarga="Cargando tus citas…">
+        {(datos) => <ListaCitas citas={datos} />}
+      </ContenidoConsulta>
     </Screen>
   );
 }

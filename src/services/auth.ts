@@ -1,4 +1,4 @@
-import type { Usuario } from '@/types';
+import type { Perfil } from '@/types';
 
 export interface Credenciales {
   email: string;
@@ -7,21 +7,22 @@ export interface Credenciales {
 
 export interface DatosRegistro extends Credenciales {
   nombre: string;
-  telefono?: string;
+  telefono: string | null;
 }
 
-export type OyenteSesion = (usuario: Usuario | null) => void;
+export type OyenteSesion = (perfil: Perfil | null) => void;
 
 /**
- * Contrato de autenticación. Fase 1: implementación demo en memoria
- * (`src/features/auth/demoAuthService.ts`). Fase 4: Supabase Auth. Las pantallas
- * solo dependen de `useAuth()`, nunca de una implementación concreta.
+ * Autenticación. Fase 2: servidor simulado + AsyncStorage. Fase 4: Supabase Auth.
+ * Las pantallas nunca lo usan directamente: pasan por `useAuth()`.
  */
 export interface AuthService {
-  /** Restaura la sesión persistida, si existe. */
-  obtenerSesion(): Promise<Usuario | null>;
-  iniciarSesion(credenciales: Credenciales): Promise<Usuario>;
-  registrar(datos: DatosRegistro): Promise<Usuario>;
+  /** Restaura la sesión persistida, si sigue siendo válida. */
+  obtenerSesion(): Promise<Perfil | null>;
+  /** @throws ServiceError `credenciales_invalidas` */
+  iniciarSesion(credenciales: Credenciales): Promise<Perfil>;
+  /** Crea una cuenta de paciente e inicia sesión. @throws ServiceError `email_en_uso` */
+  registrar(datos: DatosRegistro): Promise<Perfil>;
   cerrarSesion(): Promise<void>;
   /** Suscribe a cambios de sesión; devuelve la función para cancelar la suscripción. */
   suscribirse(oyente: OyenteSesion): () => void;

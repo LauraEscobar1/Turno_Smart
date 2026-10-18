@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import {
   createContext,
   useCallback,
@@ -8,44 +9,39 @@ import {
   type ReactNode,
 } from 'react';
 
-import { crearDemoAuthService, esDemoAuthService } from '@/features/auth/demoAuthService';
-import type { AuthService, Credenciales, DatosRegistro } from '@/services';
-import type { Rol, Usuario } from '@/types';
+import { codigoDeError, type Credenciales, type DatosRegistro } from '@/services';
+import type { Perfil, Rol } from '@/types';
+
+import { useServicios } from './ServiciosContext';
 
 export interface AuthContextValue {
-  usuario: Usuario | null;
-  /** true mientras se restaura la sesión al abrir la app. */
+  usuario: Perfil | null;
+  /** true mientras se restaura la sesión guardada al abrir la app. */
   cargando: boolean;
-  /** true si la sesión es simulada (Fase 1). */
+  /** true con el servidor simulado (Fase 2). */
   modoDemo: boolean;
   iniciarSesion(credenciales: Credenciales): Promise<void>;
   registrar(datos: DatosRegistro): Promise<void>;
   cerrarSesion(): Promise<void>;
-  /** Solo existe en modo demo. */
+  /** Accesos rápidos con las cuentas demo; `null` fuera del modo demo. */
   entrarComoDemo: ((rol: Rol) => Promise<void>) | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 /**
- * Servicio por defecto. En la Fase 4 este es el único punto que cambia:
- * se sustituye por el servicio de Supabase Auth y las pantallas no se tocan.
+ * Sesión de la app. Depende solo del contrato `AuthService`: en la Fase 4 se
+ * cambia la implementación en `src/services/index.ts` y este archivo no cambia.
  */
-const servicioPorDefecto: AuthService = crearDemoAuthService();
-
-export interface AuthProviderProps {
-  children: ReactNode;
-  /** Permite inyectar otra implementación (pruebas o Supabase). */
-  servicio?: AuthService;
-}
-
-export function AuthProvider({ children, servicio = servicioPorDefecto }: AuthProviderProps) {
-  const [usuario, setUsuario] = useState<Usuario | null>(null);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const { auth, demo } = useServicios();
+  const clienteConsultas = useQueryClient();
+  const [usuario, setUsuario] = useState<Perfil | null>(null);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
     let activo = true;
-    servicio
+    auth
       .obtenerSesion()
       .then((restaurado) => {
         if (activo) setUsuario(restaurado);
@@ -56,50 +52,69 @@ export function AuthProvider({ children, servicio = servicioPorDefecto }: AuthPr
       .finally(() => {
         if (activo) setCargando(false);
       });
-    const cancelar = servicio.suscribirse(setUsuario);
+    const cancelar = auth.suscribirse((perfil) => {
+      if (activo) setUsuario(perfil);
+    });
     return () => {
       activo = false;
       cancelar();
     };
-  }, [servicio]);
+  }, [auth]);
 
   const iniciarSesion = useCallback(
     async (credenciales: Credenciales) => {
-      setUsuario(await servicio.iniciarSesion(credenciales));
+      const perfil = await auth.iniciarSesion(credenciales);
+      clienteConsultas.clear();
+      setUsuario(perfil);
     },
-    [servicio],
+    [auth, clienteConsultas],
   );
 
   const registrar = useCallback(
     async (datos: DatosRegistro) => {
-      setUsuario(await servicio.registrar(datos));
+      const perfil = await auth.registrar(datos);
+      clienteConsultas.clear();
+      setUsuario(perfil);
     },
-    [servicio],
+    [auth, clienteConsultas],
   );
 
   const cerrarSesion = useCallback(async () => {
-    await servicio.cerrarSesion();
+    await auth.cerrarSesion();
+    // Nada de la sesión anterior debe quedar en memoria para el siguiente usuario.
+    clienteConsultas.clear();
     setUsuario(null);
-  }, [servicio]);
+  }, [auth, clienteConsultas]);
+
+  // Si el servidor dice que la sesión ya no es válida, se cierra.
+  useEffect(() => {
+    return clienteConsultas.getQueryCache().subscribe((evento) => {
+      if (
+        evento.type === 'updated' &&
+        evento.action.type === 'error' &&
+        codigoDeError(evento.action.error) === 'no_autenticado'
+      ) {
+        void cerrarSesion();
+      }
+    });
+  }, [clienteConsultas, cerrarSesion]);
 
   const entrarComoDemo = useMemo(() => {
-    if (!esDemoAuthService(servicio)) return null;
-    return async (rol: Rol) => {
-      setUsuario(await servicio.entrarComo(rol));
-    };
-  }, [servicio]);
+    if (!demo) return null;
+    return (rol: Rol) => iniciarSesion(demo.cuentas[rol]);
+  }, [demo, iniciarSesion]);
 
   const valor = useMemo<AuthContextValue>(
     () => ({
       usuario,
       cargando,
-      modoDemo: entrarComoDemo !== null,
+      modoDemo: demo !== null,
       iniciarSesion,
       registrar,
       cerrarSesion,
       entrarComoDemo,
     }),
-    [usuario, cargando, iniciarSesion, registrar, cerrarSesion, entrarComoDemo],
+    [usuario, cargando, demo, iniciarSesion, registrar, cerrarSesion, entrarComoDemo],
   );
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;
